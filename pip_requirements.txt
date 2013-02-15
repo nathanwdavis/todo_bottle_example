@@ -1,0 +1,8 @@
+bottle==0.11.6
+gunicorn==0.17.2
+hiredis==0.1.1
+logilab-astng==0.24.1
+logilab-common==0.59.0
+pylint==0.26.0
+redis==2.7.2
+wsgiref==0.1.2
