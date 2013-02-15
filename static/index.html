@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Todo app</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="Nathan Davis">
+    <link href="/bs/css/bootstrap.css" rel="stylesheet">
+    <link href='//fonts.googleapis.com/css?family=Cantata+One|Istok+Web:400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <style>
+    div.container {
+      background: #f4f4f4 url(/bs/img/background.png);
+    }
+    td.guideline-right {
+      border-right: 4px double #daa; 
+    }
+    td.checkbox-container {
+      max-width: 36px;
+      width: 36px;
+      max-height: 36px;
+      height: 36px
+    }
+    input[type=checkbox] {
+      width: 42px;
+      height: 42px;
+      padding: 0 0 0 0;
+      margin: 0 0 0 0;
+    }
+    td.todo-text {
+      padding-top: 17px;
+      font-size: 16px;
+    }
+    td.todo-text .icon-chevron-right, td.todo-text .icon-plus {
+      float: right;
+      margin-top: 2px;
+      margin-right: 10px;
+      opacity: .25;
+    }
+    td.todo-text:hover .icon-chevron-right, td.todo-text:hover .icon-plus {
+      opacity: .85;
+    }
+    div.editor-container {
+      height: 278px;
+      max-height: 278px;
+      display: none;
+      padding: 0 0 0 0;
+      margin: 0 0 0 0;
+      float: left;
+    }
+    </style>
+
+    <link href="/bs/css/bootstrap-responsive.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+  </head>
+  <body>
+
+    <div class="container">
+      <div class="row">
+        <div class="span10 offset1">
+          <h2>To Do:</h2>
+          <table class="table table-hover" id="todosTable">
+            <!-- <tr>
+              <td class="guideline-right checkbox-container"><input type="checkbox"></td>
+              <td class="todo-text">A task I really need to do ASAP.<i class="icon-chevron-right"></i></td>
+            </tr>
+            <tr>
+              <td class="guideline-right checkbox-container"><input type="checkbox"></td>
+              <td class="todo-text">Another thing I gotta do. Another thing I really gotta do. Do it. Do it. Go.<i class="icon-chevron-right"></i></td>
+            </tr>
+            <tr>
+              <td class="guideline-right checkbox-container"><input type="checkbox"></td>
+              <td class="todo-text">Do this soon or Dye<i class="icon-chevron-right"></i></td>
+            </tr> -->
+            <tr class="add-form-row">
+              <td class="guideline-right checkbox-container"></td>
+              <td class="todo-text">
+                <div class="editor-container">
+                  <form>
+                    <input type="text" id="todoTitle" class="input-xxlarge" placeholder="To do...">
+                    
+                    <label for="due">Due</label>
+                    <input type="date" id="due" placeholder="Due Date (optional)" class="input-medium">
+                    <label for="labels">Labels</label>
+                    <input type="text" id="labels" placeholder="Labels (optional)" class="input-large">
+                    <p>
+                      <button class="btn btn-small" type="button" id="saveTodo">Done</button>
+                    </p>
+                    
+                  </form>
+                </div>
+                <i class="icon-plus"></i>
+              </td>
+            </tr>
+            <tr>
+              <td class="guideline-right"></td>
+              <td></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <script src="/js/jquery.js"></script>
+    <script src="/js/underscore-min.js"></script>
+    <script src="/js/backbone-min.js"></script>
+    <script>
+    $('.add-form-row').click(
+      function() {$('.editor-container', this).show('fast').children('#todotitle').first().focus();}
+      //,
+      //function() {$('.editor-container', this).hide('slow');}
+    );
+
+    $(function(){
+
+      var ToDoItem = Backbone.Model.extend({
+        defaults: function() { 
+          return {
+            title: "",
+            dueDate: null,
+            labels: [],
+            completed: false
+          };
+        },
+
+        toggleCompleted: function() {
+          this.set("completed", !this.get("completed"));
+        }
+      });
+
+      var ToDoList = Backbone.Collection.extend({
+
+        model: ToDoItem,
+        url: "/api/todos",
+      });
+
+      todos = new ToDoList;
+
+      var ToDoEditView = Backbone.View.extend({
+        className: "editor-container",
+        template: _.template($('#edit-template').html()),
+
+        events: {
+          "click #saveTodo": "save"
+        },
+
+        save: function() {
+          var title = this.$('#todoTitle').val();
+          var dueDate = this.$('#due').val();
+          var labels = this.$('#labels').val();
+
+          todos.create({
+            title: title,
+            dueDate: dueDate,
+            labels: labels,
+          });
+        }
+      });
+
+      var newToDoForm = new ToDoEditView({el: $('.add-form-row .editor-container')})
+
+      var ToDoView = Backbone.View.extend({
+        tagName: "tr",
+        className: "item-row",
+        template: _.template($('#view-template').html()),
+
+        render: function() {
+          this.$el.html(this.template(this.model.toJSON()));
+          return this;
+        }
+      });
+
+      var ToDoListView = Backbone.View.extend({
+        el: $('#todosTable'),
+
+        initialize: function(){
+          this.listenTo(todos, 'add', this.addOne);
+          this.listenTo(todos, 'reset', this.addAll);
+          this.listenTo(todos, 'all', this.render);
+
+          todos.fetch(
+            function(collection, response, options) {},
+            function(collection, xhr, options) {
+              alert("fail");
+            });
+        },
+
+        addOne: function(item) {
+          var itemView = new ToDoView({model: item});
+          var lastOutstanding = this.$el.find('.item-row').last()
+          if (lastOutstanding.length > 0) {
+            lastOutstanding.after(itemView.render().el);
+          } else {
+            this.$el.prepend(itemView.render().el);
+          }
+        },
+        addAll: function() {
+          todos.each(this.addOne, this);
+        },
+      });
+      window.toDoList = new ToDoListView;
+    });
+
+    </script>
+
+
+    <!-- view templates -->
+    <script type="text/template" id="edit-template">
+
+    <form>
+      <input type="text" id="todoTitle" class="input-xxlarge" placeholder="To do..." value="<%- title %>">
+      
+      <label for="due">Due</label>
+      <input type="date" id="due" placeholder="Due Date (optional)" class="input-medium" value="<%- dueDate %>">
+      <label for="labels">Labels</label>
+      <input type="text" id="labels" placeholder="Labels (optional)" class="input-large" value="<%- labels %>">
+      <input type="hidden" id="id">
+      <p>
+        <button class="btn btn-small" type="button" id="saveTodo">Done</button>
+      </p>
+      
+    </form>
+
+    </script>
+
+    <script type="text/template" id="view-template">
+
+    <td class="guideline-right checkbox-container"><input type="checkbox" <%= completed ? 'checked="checked"' : '' %>></td>
+    <td class="todo-text"><%- title %><i class="icon-chevron-right"></i></td>
+
+    </script>
+  </body>
+</html>
