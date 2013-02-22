@@ -49,7 +49,6 @@ def setup_test_get_todos_for_user():
     'completed': False
   }
   app.save_todo_for_user(user, todo2)
-  print 'here'
 
 @with_setup(setup_test_get_todos_for_user)
 def test_get_todos_for_user():
@@ -64,5 +63,4 @@ def test_get_todos_for_user_with_leave_raw_true():
   user = "test_user"
   result = app.get_todos_for_user(user, leave_raw=True)
   assert len(result) == 2
-  print (type(result[0]))
   assert type(result[0]) == type("")
