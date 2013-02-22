@@ -151,7 +151,10 @@
 
         save: function() {
           var title = this.$('#todoTitle').val();
+
           var dueDate = this.$('#due').val();
+          dueDate = dueDate ? Date.parse(dueDate) : null;
+
           var labels = this.$('#labels').val();
 
           todos.create({
