@@ -4,9 +4,7 @@ import json
 
 wsgi = TestApp(app.bottle_app)
 
-def test_wsgi_get_todos_success():
-  resp = wsgi.get('/api/todos')
-  assert resp.status_code == 200
+global new_id
 
 def test_wsgi_post_todo_success():
   post_data = dict(
@@ -39,3 +37,29 @@ def test_wsgi_put_todo_success():
   resp = wsgi.put_json('/api/todos/'+new_id, post_data)
   assert resp.status_code == 200
   assert int(resp.json['dueDate']) == dueDate + 10
+
+def test_wsgi_get_todos_success():
+  resp = wsgi.get('/api/todos')
+  assert resp.status_code == 200
+
+def test_wsgi_delete_todo_success():
+  dueDate = 1362355210010
+  post_data = dict(
+    title='a test todo title',
+    dueDate=dueDate,
+    labels=[
+      'test_label1', 
+      'test_label2'
+    ],
+    completed=False
+  )
+  resp = wsgi.post_json('/api/todos', post_data)
+  new_id = str(resp.json['id'])
+  resp = wsgi.delete('/api/todos/'+new_id)
+  assert resp.status_code == 200
+  assert int(resp.json['success']) == True
+
+def test_wsgi_get_labels_success():
+  resp = wsgi.get('/api/labels')
+  assert resp.status_code == 200
+

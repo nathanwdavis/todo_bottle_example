@@ -25,3 +25,11 @@ def test_millis_since_epoch_with_specific_datetime():
   dt = datetime(2013,1,1,5,15,30)
   actual_millis = app.millis_since_epoch(dt)
   assert actual_millis == expected_millis
+
+def test_normalize_todo_data():
+  test_todo = _test_todo
+  test_todo['labels'].append('')
+  assert len(test_todo['labels']) == 3
+  print test_todo
+  test_todo = app.normalize_todo_data(test_todo)
+  assert len(test_todo['labels']) == 2

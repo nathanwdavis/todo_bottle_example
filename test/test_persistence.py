@@ -24,7 +24,7 @@ def test_save_todo_for_user():
   assert(result)
 
 
-def setup_test_get_todos_for_user():
+def setup_test_todos_for_user():
   app._redis.flushdb()
   user = "test_user"
   todo1 = {      
@@ -50,7 +50,7 @@ def setup_test_get_todos_for_user():
   }
   app.save_todo_for_user(user, todo2)
 
-@with_setup(setup_test_get_todos_for_user)
+@with_setup(setup_test_todos_for_user)
 def test_get_todos_for_user():
   user = "test_user"
   result = app.get_todos_for_user(user)
@@ -58,9 +58,26 @@ def test_get_todos_for_user():
   #default sort should put bbc123efg456hij789__ first
   assert result[0]['id'] == 'bbc123efg456hij789__'
 
-@with_setup(setup_test_get_todos_for_user)
+@with_setup(setup_test_todos_for_user)
 def test_get_todos_for_user_with_leave_raw_true():
   user = "test_user"
   result = app.get_todos_for_user(user, leave_raw=True)
   assert len(result) == 2
   assert type(result[0]) == type("")
+
+@with_setup(setup_test_todos_for_user)
+def test_delete_todo_for_user():
+  user = "test_user"
+  id_to_delete = 'abc123efg456hij789__'
+  result = app.delete_todo_for_user(user, id_to_delete)
+  assert result == True
+  existing_todos = app.get_todos_for_user(user)
+  assert len(existing_todos) == 1
+  assert existing_todos[0]['id'] == 'bbc123efg456hij789__'
+
+@with_setup(setup_test_todos_for_user)
+def test_get_all_labels():
+  result = app.get_all_labels()
+  assert len(result) == 3
+  assert result >= {'test_label1', 'test_label2', 'test_label3'}
+

@@ -156,6 +156,7 @@
           dueDate = dueDate ? Date.parse(dueDate) : null;
 
           var labels = this.$('#labels').val();
+          labels = labels.split(',');
 
           todos.create({
             title: title,
