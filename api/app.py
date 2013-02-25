@@ -1,5 +1,7 @@
 from bottle import Bottle, request, response, get, post, put, delete, static_file, run
 import redis
+from base64 import b64encode, b64decode
+from Crypto.Cipher import AES
 
 from uuid import uuid4
 from datetime import datetime
@@ -11,9 +13,12 @@ _redis = redis.StrictRedis()
 bottle_app = Bottle()
 
 TEST_USER_NAME = "test_user"
+SECRET_KEY = "your very secret key goes here.."
 
 @bottle_app.post('/api/todos')
 def create_todo():
+  if not authorized():
+    return unauthorized_response()
   todo_data = request.json
   todo_data['id'] = str(uuid4())
   todo_data = normalize_todo_data(todo_data)
@@ -25,6 +30,8 @@ def create_todo():
 
 @bottle_app.put('/api/todos/<id>')
 def update_todo(id):
+  if not authorized():
+    return unauthorized_response()
   todo_data = request.json
   todo_data['id'] = id
   todo_data = normalize_todo_data(todo_data)
@@ -33,6 +40,8 @@ def update_todo(id):
 
 @bottle_app.delete('/api/todos/<id>')
 def delete_todo(id):
+  if not authorized():
+    return unauthorized_response()
   if delete_todo_for_user(TEST_USER_NAME, id):
     return {'success': True}
   else:
@@ -40,6 +49,8 @@ def delete_todo(id):
 
 @bottle_app.get('/api/todos')
 def get_todos():
+  if not authorized():
+    return unauthorized_response()
   response.content_type = 'application/json'
   todos = get_todos_for_user(TEST_USER_NAME)
   return serialize(todos)
@@ -53,6 +64,31 @@ def get_labels():
 def send_static(filename):
   return static_file(filename, root='static/')
 
+#Auth
+
+@bottle_app.post('/api/login')
+def handle_login():
+  username = request.POST.get('username', '').strip()
+  password = request.POST.get('password', '').strip()
+  #todo: validate u/p pair
+  auth_token = build_auth_token(username)
+  response.set_cookie('auth_token', auth_token)
+  return {'auth_token': auth_token}
+
+def authorized():
+  token = request.cookies.get('auth_token')
+  if not token: token = request.params.get('auth_token')
+
+  if token:
+    username = extract_username_from_token(token)
+    request.environ['this_app.current_user'] = username
+    return True
+  else:
+    response.status = '403 Unauthorized request'
+    return False
+
+def unauthorized_response():
+  return {'error_message': 'Unauthorized request. Please login.'}
 
 #Redis persistence
 
@@ -103,6 +139,32 @@ def normalize_todo_data(todo_data):
   def is_not_None(val): return val != None and val != '' and val != u''
   todo_data['labels'] = filter(is_not_None, todo_data['labels'])
   return todo_data
+
+def build_cipher():
+  cipher = AES.new(SECRET_KEY, AES.MODE_CFB, 'ur_secrt' * (AES.block_size / 8))
+  return cipher
+
+def encrypt(data):
+  cipher = build_cipher()
+  c = cipher.encrypt(data)
+  e = b64encode(c)
+  del cipher
+  return e
+
+def decrypt(data):
+  cipher = build_cipher()
+  d = b64decode(data)
+  p = cipher.decrypt(d)
+  del cipher
+  return p
+
+def build_auth_token(username):
+  return encrypt(username+":|:"+str(millis_since_epoch()))
+
+def extract_username_from_token(auth_token):
+  decrypted = decrypt(auth_token)
+  pieces = decrypted.split(':|:')
+  return pieces[0]
 
 if (__name__ == '__main__'):
   #start server

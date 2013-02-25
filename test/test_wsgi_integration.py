@@ -4,7 +4,14 @@ import json
 
 wsgi = TestApp(app.bottle_app)
 
-global new_id
+auth_token = None
+
+def test_wsgi_post_login_success():
+  resp = wsgi.post('/api/login', dict(username='nate', password='password'))
+  assert resp.status_code == 200
+  assert resp.json['auth_token']
+  global auth_token
+  auth_token = resp.json['auth_token']
 
 def test_wsgi_post_todo_success():
   post_data = dict(
@@ -14,7 +21,8 @@ def test_wsgi_post_todo_success():
       'test_label1', 
       'test_label2'
     ],
-    completed=False
+    completed=False,
+    auth_token=auth_token
   )
   resp = wsgi.post_json('/api/todos', post_data)
   assert resp.status_code == 200
@@ -62,4 +70,5 @@ def test_wsgi_delete_todo_success():
 def test_wsgi_get_labels_success():
   resp = wsgi.get('/api/labels')
   assert resp.status_code == 200
+
 

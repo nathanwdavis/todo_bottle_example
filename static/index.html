@@ -49,6 +49,9 @@
       margin: 0 0 0 0;
       float: left;
     }
+    small {
+      font-size: 11px;
+    }
     </style>
 
     <link href="/bs/css/bootstrap-responsive.css" rel="stylesheet">
@@ -111,7 +114,12 @@
     <script src="/js/backbone-min.js"></script>
     <script>
     $('.add-form-row').click(
-      function() {$('.editor-container', this).show('fast').children('#todotitle').first().focus();}
+      function() {
+        $('.editor-container', this).show('fast', function() {
+          console.log('show editor animation complete')
+          $('#todoTitle', this).focus();
+        });
+      }
       //,
       //function() {$('.editor-container', this).hide('slow');}
     );
@@ -149,20 +157,39 @@
           "click #saveTodo": "save"
         },
 
+        render: function() {
+          this.$el.html(this.template(this.model.toJSON())).show('fast', function() {
+            $('#todoTitle', this).focus();
+          });
+          return this;
+        },
+
         save: function() {
           var title = this.$('#todoTitle').val();
+          if (!title) { return; }
 
           var dueDate = this.$('#due').val();
-          dueDate = dueDate ? Date.parse(dueDate) : null;
+          dueDate = dueDate ? new Date(dueDate).getTime() : new Date().getTime();
 
           var labels = this.$('#labels').val();
-          labels = labels.split(',');
+          labels = labels.trim().split(',');
 
-          todos.create({
+          var attrToSave = {
             title: title,
             dueDate: dueDate,
-            labels: labels,
-          });
+            labels: labels
+          };
+          if (this.model && this.model.id) {
+            this.model.save(attrToSave);
+          } else {
+            todos.create(attrToSave);
+          }
+          this.resetForm();
+        },
+
+        resetForm: function() {
+          this.$('form')[0].reset();
+          this.$('#due').val(null); //webkit doesn't seem to actually clear this on reset
         }
       });
 
@@ -173,27 +200,55 @@
         className: "item-row",
         template: _.template($('#view-template').html()),
 
+        events: {
+          "click .todo-text": "enterEditMode"
+        },
+
+        initialize: function() {
+          this.listenTo(this.model, 'change', this.render);
+          this.listenTo(this.model, 'destroy', this.remove);
+        },
+
         render: function() {
           this.$el.html(this.template(this.model.toJSON()));
           return this;
+        },
+
+        enterEditMode: function() {
+          var editView = new ToDoEditView({model: this.model})
+          this.$('.todo-text').html(editView.render().el)
         }
       });
 
       var ToDoListView = Backbone.View.extend({
         el: $('#todosTable'),
 
+        itemViews: {},
+
         initialize: function(){
-          this.listenTo(todos, 'add', this.addOne);
+          this.listenTo(todos, 'add', this.refresh);
+          this.listenTo(todos, 'remove', this.refresh);
           this.listenTo(todos, 'reset', this.addAll);
-          this.listenTo(todos, 'all', this.render);
 
-          todos.fetch(
-            function(collection, response, options) {},
-            function(collection, xhr, options) {
-              alert("fail");
-            });
+          this.fetch();
         },
-
+        refresh: function() {
+          console.log('refresh begin');
+          this.clearAll();
+          this.fetch();
+          console.log('refresh end');
+        },
+        fetch: function() {
+          todos.fetch({
+            success: function(){},
+            error: function(collection, xhr, options){
+              console.log(xhr);
+              if (xhr.status === 403) {
+                //prompt user for login somehow
+              }
+            }
+          });
+        },
         addOne: function(item) {
           var itemView = new ToDoView({model: item});
           var lastOutstanding = this.$el.find('.item-row').last()
@@ -202,10 +257,23 @@
           } else {
             this.$el.prepend(itemView.render().el);
           }
+          this.itemViews[item.id] = itemView;
         },
         addAll: function() {
+          console.log('addAll begin');
           todos.each(this.addOne, this);
+          console.log('addAll end');
         },
+        clearOne: function(item) {
+          var itemView = this.itemViews[item.id];
+          if (itemView) {
+            itemView.remove()
+            delete this.itemViews[item.id];
+          }
+        },
+        clearAll: function() {
+          todos.each(this.clearOne, this);
+        }
       });
       window.toDoList = new ToDoListView;
     });
@@ -235,7 +303,18 @@
     <script type="text/template" id="view-template">
 
     <td class="guideline-right checkbox-container"><input type="checkbox" <%= completed ? 'checked="checked"' : '' %>></td>
-    <td class="todo-text"><%- title %><i class="icon-chevron-right"></i></td>
+    <td class="todo-text">
+      <p>
+        <%- title %>
+        <i class="icon-chevron-right"></i>
+      </p>
+      <p class="text-right">
+        <small><%= new Date(dueDate).toDateString() %></small>
+        <% for (var i = 0; i < labels.length; i++) { %>
+          <label class="label"><small><%- labels[i] %></small></label>
+        <% } %>
+      </p>
+    </td>
 
     </script>
   </body>

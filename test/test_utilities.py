@@ -33,3 +33,10 @@ def test_normalize_todo_data():
   print test_todo
   test_todo = app.normalize_todo_data(test_todo)
   assert len(test_todo['labels']) == 2
+
+def test_encrypt_decrypt():
+  data = 'abc123def456'
+  encrypted = app.encrypt(data)
+  assert encrypted
+  decrypted = app.decrypt(encrypted)
+  assert decrypted == data
