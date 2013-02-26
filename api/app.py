@@ -1,4 +1,4 @@
-from bottle import Bottle, request, response, get, post, put, delete, static_file, run
+from bottle import Bottle, request, response, get, post, put, delete, redirect, static_file, run
 import redis
 from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
@@ -70,11 +70,14 @@ def send_static(filename):
 def handle_login():
   username = request.POST.get('username', '').strip()
   password = request.POST.get('password', '').strip()
+  redirect_to = request.POST.get('redirectto', '').strip()
   #todo: validate u/p pair
   auth_token = build_auth_token(username)
   response.set_cookie('auth_token', auth_token)
-  return {'auth_token': auth_token}
-
+  if len(redirect_to) > 0:
+    redirect("/index.html")
+  else: return {'auth_token': auth_token}
+  
 def authorized():
   token = request.cookies.get('auth_token')
   if not token: token = request.params.get('auth_token')

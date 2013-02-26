@@ -49,6 +49,9 @@
       margin: 0 0 0 0;
       float: left;
     }
+    #login-box {
+      display: none;
+    }
     small {
       font-size: 11px;
     }
@@ -68,6 +71,7 @@
       <div class="row">
         <div class="span10 offset1">
           <h2>To Do:</h2>
+          
           <table class="table table-hover" id="todosTable">
             <!-- <tr>
               <td class="guideline-right checkbox-container"><input type="checkbox"></td>
@@ -106,6 +110,21 @@
               <td></td>
             </tr>
           </table>
+          <br />
+          <div id="login-box" class="alert alert-block alert-info">
+            <h4>Please Login to use the app</h4>
+            <br />
+            <form action="/api/login" method="POST">
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username" placeholder="Username" class="input-medium">
+              <label for="password">Password</label>
+              <input type="text" id="password" name="password" class="input-medium">
+              <input type="hidden" id="redirectto" name="redirectto" value="/index.html">
+              <p>
+                <input class="btn btn-small" type="submit" value="Sign In"></button>
+              </p>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -201,7 +220,8 @@
         template: _.template($('#view-template').html()),
 
         events: {
-          "click .todo-text": "enterEditMode"
+          "click .todo-text": "enterEditMode",
+          "click input:checkbox": "markComplete" 
         },
 
         initialize: function() {
@@ -217,6 +237,9 @@
         enterEditMode: function() {
           var editView = new ToDoEditView({model: this.model})
           this.$('.todo-text').html(editView.render().el)
+        },
+        markComplete: function() {
+          this.model.destroy();
         }
       });
 
@@ -235,7 +258,8 @@
         refresh: function() {
           console.log('refresh begin');
           this.clearAll();
-          this.fetch();
+          var ctx = this;
+          setTimeout(function(){ctx.fetch();},150); //ugh
           console.log('refresh end');
         },
         fetch: function() {
@@ -244,7 +268,9 @@
             error: function(collection, xhr, options){
               console.log(xhr);
               if (xhr.status === 403) {
-                //prompt user for login somehow
+                $('#login-box').show('fast', function() {
+                  $('#username', this).focus();
+                })
               }
             }
           });
