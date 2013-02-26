@@ -186,6 +186,6 @@ def extract_username_from_token(auth_token):
 if (__name__ == '__main__'):
   #start server
   bottle_app.run(
-    #server='gunicorn', 
+    server='gunicorn', 
     debug=True, reloader=True
   )

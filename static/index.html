@@ -70,7 +70,7 @@
     <div class="container">
       <div class="row">
         <div class="span10 offset1">
-          <h2>To Do:</h2>
+          <h3>To Do:</h3>
           
           <table class="table table-hover" id="todosTable">
             <!-- <tr>
@@ -107,7 +107,7 @@
             </tr>
             <tr>
               <td class="guideline-right"></td>
-              <td></td>
+              <td><span class="pull-right"><small>Sort by: &nbsp; <a href="#sort/dueDate">Due</a> | <a href="#sort/title">Title</a></small> </span></td>
             </tr>
           </table>
           <br />
@@ -165,11 +165,19 @@
         model: ToDoItem,
         tagFilter: null,
         sortBy: 'dueDate',
-        url: function() { 
-          var url = "/api/todos?"; 
+
+        url: "/api/todos",
+
+        fetch: function(options) {
+          var originalUrl = this.url;
+          var url = this.url + '?'; 
           if (this.tagFilter) { url += 'tagFilter=' + this.tagFilter + '&'; }
-          if (this.sortBy) { url += 'sortBy=' + this.sortBy + '&'; }
-          return url;
+          if (this.sortBy) { url += 'sortBy=' + this.sortBy; }
+          this.url = url;
+
+          this.constructor.__super__.fetch.apply(this, arguments);
+
+          this.url = originalUrl;
         }
       });
 
@@ -363,14 +371,19 @@
     <td class="todo-text">
       <p class="title">
         <%- title %>
-        <i class="icon-chevron-right"></i>
-      </p>
-      <p class="text-right">
+        &nbsp; &nbsp; - &nbsp;
         <small><%= new Date(dueDate).toDateString() %></small>
         <% for (var i = 0; i < labels.length; i++) { %>
           <a class="label" href="#tag/<%- labels[i] %>"><small><%- labels[i] %></small></a>
         <% } %>
+        <i class="icon-chevron-right"></i>
       </p>
+      <!--// <p class="text-right">
+      //   <small><%= new Date(dueDate).toDateString() %></small>
+      //   <% for (var i = 0; i < labels.length; i++) { %>
+      //     <a class="label" href="#tag/<%- labels[i] %>"><small><%- labels[i] %></small></a>
+      //   <% } %>
+      // </p>-->
     </td>
 
     </script>
