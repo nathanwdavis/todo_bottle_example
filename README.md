@@ -6,5 +6,10 @@ Yet another ToDo example app - this one built with:
  - Bottle ( http://bottlepy.org )
  - Bootstrap
  - Backbone
+ - Persistence in Redis
 
-This is very much unfinished right now.
+To get this up and running for yourself:
+
+ - 'pip install -r pip_requirements.txt' to get the dependencies installed
+ - start up a Redis server ('redis-server')
+ - 'python api/app.py' to start the built-in web server
