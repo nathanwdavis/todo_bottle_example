@@ -42,8 +42,8 @@
       opacity: .85;
     }
     div.editor-container {
-      height: 278px;
-      max-height: 278px;
+      height: 255px;
+      max-height: 255px;
       display: none;
       padding: 0 0 0 0;
       margin: 0 0 0 0;
@@ -93,7 +93,7 @@
                     <input type="text" id="todoTitle" class="input-xxlarge" placeholder="To do...">
                     
                     <label for="due">Due</label>
-                    <input type="date" id="due" placeholder="Due Date (optional)" class="input-medium">
+                    <input type="date" id="due" placeholder="Due Date (optional)" class="input-small">
                     <label for="labels">Labels</label>
                     <input type="text" id="labels" placeholder="Labels (optional)" class="input-large">
                     <p>
@@ -163,7 +163,14 @@
       var ToDoList = Backbone.Collection.extend({
 
         model: ToDoItem,
-        url: "/api/todos",
+        tagFilter: null,
+        sortBy: 'dueDate',
+        url: function() { 
+          var url = "/api/todos?"; 
+          if (this.tagFilter) { url += 'tagFilter=' + this.tagFilter + '&'; }
+          if (this.sortBy) { url += 'sortBy=' + this.sortBy + '&'; }
+          return url;
+        }
       });
 
       todos = new ToDoList;
@@ -220,7 +227,7 @@
         template: _.template($('#view-template').html()),
 
         events: {
-          "click .todo-text": "enterEditMode",
+          "click .todo-text .title": "enterEditMode",
           "click input:checkbox": "markComplete" 
         },
 
@@ -302,6 +309,30 @@
         }
       });
       window.toDoList = new ToDoListView;
+
+      var AppRouter = Backbone.Router.extend({
+
+        routes: {
+          "sort/:sortBy": "sort",
+          "tag/:tagName": "filterByTag"
+        },
+
+        filterByTag: function(tagName) {
+          console.log('filter by ' + tagName);
+          todos.tagFilter = tagName;
+          window.toDoList.refresh();
+        },
+
+        sort: function(sortBy) {
+          console.log('sort by ' + sortBy);
+          todos.sortBy = sortBy;
+          window.toDoList.refresh();
+        }
+
+      });
+      var router = new AppRouter
+      Backbone.history.start()
+
     });
 
     </script>
@@ -314,7 +345,7 @@
       <input type="text" id="todoTitle" class="input-xxlarge" placeholder="To do..." value="<%- title %>">
       
       <label for="due">Due</label>
-      <input type="date" id="due" placeholder="Due Date (optional)" class="input-medium" value="<%- dueDate %>">
+      <input type="date" id="due" placeholder="Due Date (optional)" class="input-small" value="<%- dueDate %>">
       <label for="labels">Labels</label>
       <input type="text" id="labels" placeholder="Labels (optional)" class="input-large" value="<%- labels %>">
       <input type="hidden" id="id">
@@ -330,14 +361,14 @@
 
     <td class="guideline-right checkbox-container"><input type="checkbox" <%= completed ? 'checked="checked"' : '' %>></td>
     <td class="todo-text">
-      <p>
+      <p class="title">
         <%- title %>
         <i class="icon-chevron-right"></i>
       </p>
       <p class="text-right">
         <small><%= new Date(dueDate).toDateString() %></small>
         <% for (var i = 0; i < labels.length; i++) { %>
-          <label class="label"><small><%- labels[i] %></small></label>
+          <a class="label" href="#tag/<%- labels[i] %>"><small><%- labels[i] %></small></a>
         <% } %>
       </p>
     </td>

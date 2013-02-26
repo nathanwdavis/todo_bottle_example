@@ -12,7 +12,6 @@ _redis = redis.StrictRedis()
 
 bottle_app = Bottle()
 
-TEST_USER_NAME = "test_user"
 SECRET_KEY = "your very secret key goes here.."
 
 @bottle_app.post('/api/todos')
@@ -24,8 +23,8 @@ def create_todo():
   todo_data = normalize_todo_data(todo_data)
   if not todo_data['dueDate']:
     todo_data['dueDate'] = millis_since_epoch()
-
-  save_todo_for_user(TEST_USER_NAME, todo_data)
+  print get_current_user();
+  save_todo_for_user(get_current_user(), todo_data)
   return todo_data
 
 @bottle_app.put('/api/todos/<id>')
@@ -35,14 +34,14 @@ def update_todo(id):
   todo_data = request.json
   todo_data['id'] = id
   todo_data = normalize_todo_data(todo_data)
-  save_todo_for_user(TEST_USER_NAME, todo_data)
+  save_todo_for_user(get_current_user(), todo_data)
   return todo_data
 
 @bottle_app.delete('/api/todos/<id>')
 def delete_todo(id):
   if not authorized():
     return unauthorized_response()
-  if delete_todo_for_user(TEST_USER_NAME, id):
+  if delete_todo_for_user(get_current_user(), id):
     return {'success': True}
   else:
     return {'success': False}
@@ -51,9 +50,10 @@ def delete_todo(id):
 def get_todos():
   if not authorized():
     return unauthorized_response()
-  response.content_type = 'application/json'
-  todos = get_todos_for_user(TEST_USER_NAME)
-  return serialize(todos)
+  tag_filter = request.query.get('tagFilter', None)
+  sort_by = request.query.get('sortBy', 'dueDate')
+  todos = get_todos_for_user(get_current_user(), sort_by, tag_filter)
+  return json_response(todos)
 
 @bottle_app.get('/api/labels')
 def get_labels():
@@ -70,8 +70,11 @@ def send_static(filename):
 def handle_login():
   username = request.POST.get('username', '').strip()
   password = request.POST.get('password', '').strip()
+  print username, password
   redirect_to = request.POST.get('redirectto', '').strip()
-  #todo: validate u/p pair
+  if not does_user_have_password(username, password):
+    response.status = '400 Invalid credential parameters'
+    return {'error_message': 'Invalid credentials'}
   auth_token = build_auth_token(username)
   response.set_cookie('auth_token', auth_token)
   if len(redirect_to) > 0:
@@ -90,16 +93,23 @@ def authorized():
     response.status = '403 Unauthorized request'
     return False
 
+def get_current_user():
+  return request.environ['this_app.current_user']
+
 def unauthorized_response():
   return {'error_message': 'Unauthorized request. Please login.'}
 
 #Redis persistence
 
-def get_todos_for_user(user, leave_raw=False):
+def get_todos_for_user(user, sort_by='dueDate', tag_filter=None, leave_raw=False):
   ids = _redis.zrange('user:'+user+':todos:bydueDate', 0, -1)
   results = _redis.hmget('all_todos', *ids)
   if not leave_raw:
     results = map(deserialize, results)
+  if tag_filter:
+    results = filter(lambda todo: tag_filter in todo['labels'], results)
+  if sort_by == 'title':
+    results = sorted(results, key=lambda todo: todo['title'])
   return results
 
 def get_all_labels():
@@ -117,9 +127,13 @@ def save_todo_for_user(user, todo):
   return todo
 
 def delete_todo_for_user(user, id):
-    _redis.zrem('user:'+user+':todos:bydueDate', id)
-    return _redis.hdel('all_todos', id)
+  _redis.zrem('user:'+user+':todos:bydueDate', id)
+  return _redis.hdel('all_todos', id)
 
+def does_user_have_password(user, password):
+  result = _redis.hget('user_credentials', user)
+  print result
+  return result == password
 
 #utility / helpers
 

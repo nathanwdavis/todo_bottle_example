@@ -1,13 +1,17 @@
 from api import app
 from webtest import TestApp, AppError
 import json
+import redis
 
 wsgi = TestApp(app.bottle_app)
 
 auth_token = None
 
+def setup():
+  app._redis = redis.StrictRedis(port=6389)
+
 def test_wsgi_post_login_success():
-  resp = wsgi.post('/api/login', dict(username='nate', password='password'))
+  resp = wsgi.post('/api/login', dict(username='test_user', password='password'))
   assert resp.status_code == 200
   assert resp.json['auth_token']
   global auth_token
@@ -48,6 +52,14 @@ def test_wsgi_put_todo_success():
 
 def test_wsgi_get_todos_success():
   resp = wsgi.get('/api/todos')
+  assert resp.status_code == 200
+
+def test_wsgi_get_todos_with_sort_by_title_success():
+  resp = wsgi.get('/api/todos?sortBy=title')
+  assert resp.status_code == 200
+
+def test_wsgi_get_todos_with_tag_filter_success():
+  resp = wsgi.get('/api/todos?tagFilter=test_label2')
   assert resp.status_code == 200
 
 def test_wsgi_delete_todo_success():
